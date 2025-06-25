@@ -23,11 +23,8 @@ async def create_topic(db: AsyncSession, topic: schemas.Topic) -> models.Topic:
     return {"detail": f"topic id: {topic_name.id}, topic name: '{topic.name}' create"}
 
 async def update_topic(db: AsyncSession, topic: schemas.Topic) -> models.Topic:
-    #topic_update = schemas.Topic(**topic.dict())
     query = await db.execute(select(models.Topic.name))#.where(models.Topic.name == topic_update.name))
-    #subject = query.scalar_one_or_none()
     fetch = query.scalars().all()
-    print(fetch)
     if fetch:
         if topic.name not in fetch:
             topic.msg = f"topic '{topic.name}' not found"
@@ -56,7 +53,6 @@ async def get_topics(db: AsyncSession):
 async def get_topic_by_post_id(db: AsyncSession, id: int) -> Union[str, bool]:
     query = await db.execute((select(models.Topic).join(models.Post).where(models.Post.id == id)))
     post = query.scalar_one_or_none()
-    print(post)
     if post:
         return post.name
     return False
@@ -85,11 +81,9 @@ async def create_post(db: AsyncSession, post: schemas.Post) -> models.Post:
         post.msg += f"Length of parameters to pass to the address bar is {3+len(str(new_post.id))+9+len(new_post.content)}"
         post.id = new_post.id
         return post
-        return new_post
     post.id = None
     post.msg = f"topic '{post.topic}' not found"
     return False
-    raise ValueError("Specified topic does not exist")
 
 async def update_post(db: AsyncSession, post: schemas.Post) -> models.Post:
     query = await db.execute(select(models.Post).where(models.Post.id == post.id))
@@ -124,12 +118,6 @@ async def get_post_by_id(db: AsyncSession,  id: int) -> schemas.Post:
     result = await db.execute(select(models.Post).where(models.Post.id == id).options(selectinload(models.Post.comments))) # eager load comments
     post = result.scalar_one_or_none()
     return jsonable_encoder(post)
-    stmt = select(models.Post.id, models.Post.content, models.Comment.post_id, models.Comment.id, models.Comment.content).where(models.Post.id == id)
-    query = await db.execute(stmt)
-    dump = query.all()
-    print(dump)
-    comments = [{"id": i[3], "content": i[4]} for i in dump if i[2] == i[0]]
-    return {"id": dump[0][0], "post content": dump[0][1], "comments": comments}
 
 async def delete_post(db: AsyncSession, id: int) -> models.Post:
     query = await db.execute(select(models.Post).where(models.Post.id == id))
@@ -150,26 +138,22 @@ async def create_comment(db: AsyncSession, comment: schemas.Comment) -> models.C
         db.add(new_comment)
         await db.commit()
         await db.refresh(new_comment)
-        print("ID: %d, Content: %s" % (new_comment.id, new_comment.content))
         return jsonable_encoder(new_comment)
     return {"detail": f"Post with ID {comment.post_id} not found"}
 
 async def update_comment(db: AsyncSession, comment: schemas.Comment) -> models.Comment:
     query = await db.execute(select(models.Comment).where(models.Comment.id == comment.id))
     comment_update = query.scalar_one_or_none()
-    print(comment_update)
     if comment_update:
         setattr(comment_update, "content", comment.new_content)
         await db.commit()
         await db.refresh(comment_update)
         return jsonable_encoder(comment_update)
-    print("not found")
     return {"detail": f"Comment with ID {comment.id} not found"}
 
 async def get_comment_by_id(db: AsyncSession, id: int) -> models.Comment:
     query = await db.execute(select(models.Comment).where(models.Comment.id == id))
     comment = query.scalar_one_or_none()
-    print(comment)
     if comment:
         return comment
     return {"detail": f"Comment with ID: {id} not found"}
@@ -177,40 +161,8 @@ async def get_comment_by_id(db: AsyncSession, id: int) -> models.Comment:
 async def delete_comment(db: AsyncSession, id: int) -> models.Comment:
     query = await db.execute(select(models.Comment).where(models.Comment.id == id))
     comment = query.scalar_one_or_none()
-    print("id: %d, content: %s" % (comment.id, comment.content)) if comment else print(comment)
     if comment:
         await db.delete(comment)
         await db.commit()
         return {"detail": f"Comment with ID {comment.id} was delete"}
     return {"detail": f"Comment with ID {id} not found"}
-
-"""
-async def get_comments_by_post(db: AsyncSession, post_id: int):
-    result = await db.execute(select(models.Comment).where(models.Comment.post_id == post_id))
-    return result.scalars().all()
-
-async def get_comment(db: AsyncSession, comment_id: int):
-    result = await db.execute(select(models.Comment).where(models.Comment.id == comment_id))
-    return result.scalar_one_or_none()
-
-async def update_comment(db: AsyncSession, comment_id: int, comment: schemas.CommentCreate):
-    result = await db.execute(select(models.Comment).where(models.Comment.id == comment_id))
-    db_comment = result.scalar_one_or_none()
-    if db_comment is None:
-        return None
-    for key, value in comment.dict().items():
-        setattr(db_comment, key, value)
-    await db.commit()
-    await db.refresh(db_comment)
-    return db_comment
-
-async def delete_comment(db: AsyncSession, comment_id: int):
-    result = await db.execute(select(models.Comment).where(models.Comment.id == comment_id))
-    db_comment = result.scalar_one_or_none()
-    if db_comment is None:
-        return None
-    await db.delete(db_comment)
-    await db.commit()
-    return db_comment
-
-"""
