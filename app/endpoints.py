@@ -41,14 +41,10 @@ async def get_post(request: Request, topic: str = Depends(schemas.GetTopic("post
         return RedirectResponse(url=f"/post/{topic}/?id={post_id}", status_code=303) # 303 See Other
     raise HTTPException(status_code=404, detail=f"Post id: {post_id} not found") # HTTP 404 Non Found
 
-#from fastapi.encoders import jsonable_encoder
 @router.post("/create-post/", response_model=schemas.Post)
 async def create_post(post: schemas.Post, db: AsyncSession = Depends(db.get_db)) -> Union[Dict, bool]:
     try:
         new_post = await utils.create_post(db, post)
-        #new_post = jsonable_encoder(await utils.create_post(db, post))
-        print(new_post)
-        #params = urlencode({"id": new_post["id"], "content": new_post["content"]})
         params = urlencode({"id": new_post.id, "content": new_post.content})
         return RedirectResponse(url=f"/post/{post.topic}/?{params}", status_code=303) # 303 See Other
     except ValueError as e:
@@ -60,8 +56,6 @@ async def create_post(post: schemas.Post, db: AsyncSession = Depends(db.get_db))
 async def update_post(post: schemas.Post, db: AsyncSession = Depends(db.get_db)) -> Dict:
     try:
         return await utils.update_post(db, post)
-        params = urlencode({"id": update.id, "content": update.new_content})
-        return RedirectResponse(url=f"/post/{update.topic}/?{params}", status_code=303) # 303 See Other
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) # HTTP 400 Bad Request
     except:
@@ -74,11 +68,9 @@ async def get_post(request: Request, db: AsyncSession = Depends(db.get_db)) -> U
         return {"content": params["content"]}
     if "id" in params:
         post = await utils.get_post_by_id(db, params["id"])
-        print(post)
         if not post:
             raise HTTPException(status_code=404, detail="Post not found") # HTTP 404 Not Found
         return post
-        return {"content": post.content}
     return {"detail": "Unknown error"}
 
 @router.delete("/delete-post/")
@@ -109,58 +101,3 @@ async def get_comment_by_id(comment_id: int, db: AsyncSession = Depends(db.get_d
 @router.delete("/delete-comment/")
 async def delete_comment(comment_id: int, db: AsyncSession = Depends(db.get_db)) -> None:
     return await utils.delete_comment(db, comment_id)
-
-'''
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
-@router.get("/post/{topic}/", response_model=schemas.Post)
-async def get_post(request: Request, topic: str, id: int, db: AsyncSession = Depends(db.get_db)) -> Dict:
-    post = jsonable_encoder(await utils.get_post_by_id(db, id))
-    print(post)
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    return {'topic': topic, 'content': post['content'], 'id': id}
-    return JSONResponse(content=post)
-
-from typing import Annotated
-@router.post("/create-post-then-redirect-test", response_model=schemas.Post)
-    #print(post.msg)
-async def create(post: Annotated[schemas.Post, Body()]) -> Dict:
-    #params = urlencode(post.model_dump())
-    params = urlencode({"id": post.id, "content": post.content})
-    return RedirectResponse(url=f"/get-post-test/topic-{post.topic}/?{params}", status_code=303)
-
-@router.get("/get-post-test/topic-{topic}/")
-async def get_post_test(request: Request):
-    params = request.query_params
-    print(params)
-    #if params:
-     #   return params
-    topic = request.path_params
-    #if topic:
-     #   return topic
-    return topic, params
-
-import json
-@router.post("/items/")
-async def create_item(request: Request, topic: schemas.Topic):
-    # Handle POST request logic here
-    body = await request.body()
-    pyload = await request.json()
-    return {"body": body.decode(), "payload like dictionary": pyload, "topic": topic}
-
-from fastapi import Path
-@router.get("/{topic}")
-async def get_param(topic: str = Path(...)) -> Dict:
-    topic = schemas.Topic(name=topic)
-    return {**topic.dict()}
-
-async def make_items(req: Request):
-    path_params = req.path_params
-    print('method: ', req.method)
-    print('path parameters: ', path_params)
-    return schemas.Post.model_validate(path_params)
-@router.get("/{topic}")
-async def get_param(topic: str, post: schemas.Post = Depends(make_items)) -> Dict:
-    return {**post.dict()}
-'''
