@@ -143,7 +143,6 @@ async def create_comment(db: AsyncSession, comment: schemas.Comment) -> models.C
 async def update_comment(db: AsyncSession, comment: schemas.Comment) -> models.Comment:
     query = await db.execute(select(models.Comment).where(models.Comment.id == comment.id))
     comment_update = query.scalar_one_or_none()
-    print(comment_update)
     if comment_update:
         setattr(comment_update, "content", comment.new_content)
         await db.commit()

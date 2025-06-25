@@ -41,14 +41,10 @@ async def get_post(request: Request, topic: str = Depends(schemas.GetTopic("post
         return RedirectResponse(url=f"/post/{topic}/?id={post_id}", status_code=303) # 303 See Other
     raise HTTPException(status_code=404, detail=f"Post id: {post_id} not found") # HTTP 404 Non Found
 
-#from fastapi.encoders import jsonable_encoder
 @router.post("/create-post/", response_model=schemas.Post)
 async def create_post(post: schemas.Post, db: AsyncSession = Depends(db.get_db)) -> Union[Dict, bool]:
     try:
         new_post = await utils.create_post(db, post)
-        #new_post = jsonable_encoder(await utils.create_post(db, post))
-        print(new_post)
-        #params = urlencode({"id": new_post["id"], "content": new_post["content"]})
         params = urlencode({"id": new_post.id, "content": new_post.content})
         return RedirectResponse(url=f"/post/{post.topic}/?{params}", status_code=303) # 303 See Other
     except ValueError as e:
@@ -60,8 +56,6 @@ async def create_post(post: schemas.Post, db: AsyncSession = Depends(db.get_db))
 async def update_post(post: schemas.Post, db: AsyncSession = Depends(db.get_db)) -> Dict:
     try:
         return await utils.update_post(db, post)
-        params = urlencode({"id": update.id, "content": update.new_content})
-        return RedirectResponse(url=f"/post/{update.topic}/?{params}", status_code=303) # 303 See Other
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) # HTTP 400 Bad Request
     except:
@@ -74,11 +68,9 @@ async def get_post(request: Request, db: AsyncSession = Depends(db.get_db)) -> U
         return {"content": params["content"]}
     if "id" in params:
         post = await utils.get_post_by_id(db, params["id"])
-        print(post)
         if not post:
             raise HTTPException(status_code=404, detail="Post not found") # HTTP 404 Not Found
         return post
-        return {"content": post.content}
     return {"detail": "Unknown error"}
 
 @router.delete("/delete-post/")
